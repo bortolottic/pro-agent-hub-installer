@@ -1,8 +1,8 @@
 # pro-agent-hub-installer
 
-    | Data | Autor | Descrição |
-    | ---- | ----- | --------- |
-    | 12/03/2026 | CVB | Criação do projeto |
+| Data | Autor | Descrição |
+| ---- | ----- | --------- |
+| 12/03/2026 | CVB | Criação do projeto |
 
     Projeto para instalação do aplicativo ProAgentHub.
 
