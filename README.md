@@ -17,11 +17,11 @@
     Para efetuar a instalação da última versão do produto, basta ir no terminal (Linux ou Windows WSL2) e digitar:
 
 ```bash
-curl -fsSL https://github.com/bortolottic/pro-agent-hub-installer/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/bortolottic/pro-agent-hub-installer/refs/heads/main/install.sh | bash
 ```
 
     Caso queira instalar uma versão específica:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/seu-org/pro-agent-hub-installer/main/install.sh | bash -s v1.0.25.2
+curl -fsSL https://raw.githubusercontent.com/bortolottic/pro-agent-hub-installer/refs/heads/main/install.sh | bash -s v1.0.25.2
 ```
