@@ -19,8 +19,8 @@ echo "======================================"
 if [ "$VERSION" = "latest" ]; then
 echo "Detectando última versão..."
 
-VERSION=$(curl -s https://api.github.com/repos/$REPO/releases/latest 
-| grep tag_name 
+VERSION=$(curl -s https://api.github.com/repos/$REPO/releases/latest \
+| grep tag_name \
 | cut -d '"' -f4)
 fi
 
