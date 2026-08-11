@@ -4,6 +4,7 @@
 | ---- | ----- | --------- |
 | 12/03/2026 | CVB | Criação do projeto |
 | 29/04/2026 | CVB | Guia expandido para Linux, Windows e macOS |
+| 11/08/2026 | CVB | Requisitos de máquina e portas, lista de serviços e passos pós-instalação (versão 1.0.26.4) |
 
 ---
 
@@ -12,6 +13,51 @@
 O **Pro Agent Hub** é uma plataforma de agentes inteligentes que roda de forma containerizada usando Docker. Este repositório contém o **instalador oficial**, que automatiza todo o processo de download e implantação do sistema.
 
 > **Para quem não é técnico:** pense neste instalador como um "assistente de instalação" que faz tudo sozinho. Você segue os passos abaixo, cola um único comando no terminal e ele cuida do restante: baixa a versão correta do sistema, descompacta os arquivos e coloca tudo em funcionamento.
+
+---
+
+## Antes de instalar
+
+### Requisitos da máquina
+
+O Pro Agent Hub sobe **nove serviços** em conjunto (a plataforma, os bancos de dados
+e os dois serviços que publicam os MCPs e os Aplicativos criados na tela). Para
+funcionar com folga, a máquina precisa de:
+
+| Recurso | Mínimo | Recomendado |
+| ------- | ------ | ----------- |
+| Memória RAM | 8 GB | 16 GB |
+| Processador | 4 núcleos | 8 núcleos |
+| Espaço em disco | 40 GB livres | 100 GB livres |
+
+> **Por que tanto:** os bancos de dados (PostgreSQL, Qdrant e MongoDB) e o serviço
+> de agentes ficam carregados o tempo todo. Com menos que o mínimo, o Docker
+> derruba serviços sozinho para liberar memória e a plataforma fica instável.
+
+### Portas que precisam estar livres
+
+O instalador publica as portas abaixo na máquina. Se alguma já estiver ocupada por
+outro programa, o serviço correspondente **não sobe** — e o instalador ainda assim
+termina com a mensagem de sucesso, porque o Docker acomoda os serviços em segundo
+plano. Vale conferir antes.
+
+| Porta | Para que serve |
+| ----- | -------------- |
+| **9080** | Endereço da plataforma no navegador |
+| 9071 | Serviço que publica os Aplicativos criados no App Builder |
+| 8003 a 8006 | Serviços MCP próprios criados na tela (um por porta) |
+| 3432 | Banco de dados PostgreSQL |
+| 6333 e 6334 | Banco vetorial Qdrant |
+| 27017 | Banco MongoDB, onde ficam os dados dos Aplicativos |
+
+Para verificar se uma porta está ocupada (Linux, macOS ou WSL2):
+
+```bash
+sudo lsof -i :27017
+```
+
+Se o comando não devolver nada, a porta está livre. O caso mais comum de conflito é
+já existir um MongoDB ou um PostgreSQL instalado na própria máquina.
 
 ---
 
@@ -137,7 +183,8 @@ Confirme que tudo está funcionando:
 docker service ls
 ```
 
-Você verá a lista de serviços ativos do Pro Agent Hub.
+Compare o resultado com a tabela de [serviços que devem estar rodando](#serviços-que-devem-estar-rodando)
+e siga para [Depois de instalar](#depois-de-instalar).
 
 ---
 
@@ -248,7 +295,8 @@ No terminal do WSL, confirme que os serviços estão ativos:
 docker service ls
 ```
 
-Você verá a lista de serviços do Pro Agent Hub em execução.
+Compare o resultado com a tabela de [serviços que devem estar rodando](#serviços-que-devem-estar-rodando)
+e siga para [Depois de instalar](#depois-de-instalar).
 
 ---
 
@@ -363,7 +411,105 @@ Confirme que os serviços estão ativos:
 docker service ls
 ```
 
-Você verá a lista de serviços do Pro Agent Hub em execução.
+Compare o resultado com a tabela de [serviços que devem estar rodando](#serviços-que-devem-estar-rodando)
+e siga para [Depois de instalar](#depois-de-instalar).
+
+---
+
+## Depois de instalar
+
+### Passo 1 — Acesse a plataforma
+
+Abra o navegador no endereço:
+
+```
+http://<endereço-da-máquina>:9080
+```
+
+Se você instalou no próprio computador, use `http://localhost:9080`. Se instalou em
+um servidor, troque `<endereço-da-máquina>` pelo IP ou pelo nome dele na rede.
+
+Os **Aplicativos** publicados pelo App Builder ficam no mesmo endereço, no caminho
+`/a/<endereço-do-app>` — não é preciso abrir nenhuma porta a mais para eles.
+
+---
+
+### Passo 2 — Troque os segredos de fábrica
+
+> **Este passo não é opcional em ambiente de produção.**
+
+O pacote de instalação vem com senhas e chaves **públicas**, iguais em toda
+instalação — elas existem para o sistema subir na primeira vez. Quem conhece esses
+valores (e eles estão no pacote, que é público) consegue entrar na plataforma como
+administrador e ler o banco de dados.
+
+Edite o arquivo `.env.production` dentro da pasta de instalação
+(`/tmp/pro-agent-hub/pro-agent-hub/`) e troque estes três valores:
+
+| Variável | O que protege |
+| -------- | ------------- |
+| `TOKEN_SECRET` | O login da plataforma, os serviços MCP e os Aplicativos internos |
+| `JWT_SECRET` | A sessão da aplicação |
+| `PRO_AI_DATABASE_PASSWORD` | O banco de dados PostgreSQL |
+
+Para gerar um valor seguro:
+
+```bash
+openssl rand -hex 32
+```
+
+Depois de editar, suba a stack novamente a partir da mesma pasta:
+
+```bash
+./deploy_production.sh
+```
+
+> **Atenção:** trocar `PRO_AI_DATABASE_PASSWORD` depois que o banco já foi criado
+> exige alterar a senha também dentro do PostgreSQL. Se a instalação for nova, faça
+> a troca **antes** do primeiro acesso — é o momento mais simples.
+
+---
+
+### Passo 3 — Confira o endereço dos Aplicativos
+
+Se você instalou em um servidor (e não no próprio computador), abra o
+`.env.production` e ajuste:
+
+```
+PRO_AI_APP_PUBLIC_URL=http://<endereço-da-máquina>:9080
+```
+
+Sem isso, o link dos Aplicativos publicados aponta para `localhost` e só funciona
+na própria máquina do servidor.
+
+---
+
+### Serviços que devem estar rodando
+
+O comando `docker service ls` deve listar os nove serviços abaixo, todos com o
+número de réplicas completo (`1/1` ou `2/2`):
+
+| Serviço | Réplicas | O que faz |
+| ------- | -------- | --------- |
+| `pro-ai-production_nginx` | 1/1 | Porta de entrada — é quem atende a porta 9080 |
+| `pro-ai-production_frontend` | 2/2 | A tela da plataforma |
+| `pro-ai-production_pro_ai_api` | 2/2 | O motor da aplicação |
+| `pro-ai-production_pro_ai_scheduler` | 1/1 | Agendamentos e rotinas automáticas |
+| `pro-ai-production_pro_ai_mcp` | 1/1 | Publica os serviços MCP criados na tela |
+| `pro-ai-production_pro_ai_app` | 2/2 | Publica os Aplicativos criados no App Builder |
+| `pro-ai-production_db` | 1/1 | Banco de dados PostgreSQL |
+| `pro-ai-production_vector` | 1/1 | Banco vetorial Qdrant (buscas por conhecimento) |
+| `pro-ai-production_mongo` | 1/1 | Banco MongoDB (dados dos Aplicativos) |
+
+Um serviço parado em `0/1` ou `0/2` por mais de alguns minutos indica problema.
+Descubra o motivo com:
+
+```bash
+docker stack ps pro-ai-production --no-trunc
+```
+
+A coluna **ERROR** mostra a causa — normalmente porta ocupada, memória insuficiente
+ou falha ao baixar a imagem.
 
 ---
 
@@ -374,10 +520,10 @@ Caso precise de uma versão específica (para ambientes de homologação ou roll
 **Linux, macOS ou WSL2 (Windows):**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bortolottic/pro-agent-hub-installer/refs/heads/main/install.sh | bash -s V1.0.26.3
+curl -fsSL https://raw.githubusercontent.com/bortolottic/pro-agent-hub-installer/refs/heads/main/install.sh | bash -s V1.0.26.4
 ```
 
-Substitua `V1.0.26.3` pelo número da versão desejada. Todas as versões disponíveis estão na página de [Releases do GitHub](https://github.com/bortolottic/pro-agent-hub-installer/releases).
+Substitua `V1.0.26.4` pelo número da versão desejada. Todas as versões disponíveis estão na página de [Releases do GitHub](https://github.com/bortolottic/pro-agent-hub-installer/releases).
 
 ---
 
@@ -388,14 +534,30 @@ O `install.sh` executa as seguintes etapas automaticamente:
 1. **Detecção de versão** — consulta a API do GitHub (`/releases/latest`) para obter a tag da versão mais recente, caso nenhuma versão seja especificada.
 2. **Download** — baixa o arquivo `pro-agent-hub-<versão>.tar.gz` diretamente da página de releases do GitHub, usando `curl` ou `wget` (o que estiver disponível).
 3. **Extração** — descompacta o pacote em `/tmp/pro-agent-hub`.
-4. **Deploy** — executa o script `deploy_production.sh` incluso no pacote, que sobe os serviços via Docker Swarm.
+4. **Deploy** — executa o script `deploy_production.sh` incluso no pacote. Ele chama
+   `deploy/deploy.sh` com a stack `pro-ai-production` e o arquivo `.env.production`,
+   que por sua vez: valida as variáveis obrigatórias (`TOKEN_SECRET`, `JWT_SECRET`,
+   credenciais do banco), registra a configuração do nginx como um *Docker config*
+   e sobe a stack via `docker stack deploy`.
 
 ```
 GitHub Releases
       │
       ▼
-install.sh  ──► baixa .tar.gz ──► extrai ──► deploy_production.sh ──► Docker Swarm
+install.sh  ──► baixa .tar.gz ──► extrai ──► deploy_production.sh ──► deploy/deploy.sh ──► Docker Swarm
 ```
+
+**Imagens baixadas do DockerHub:** `pro-ai-frontend`, `pro-ai-api`,
+`pro-ai-scheduler`, `pro-ai-mcp` e `pro-ai-app`. Os bancos usam as imagens oficiais
+`postgres:13`, `qdrant/qdrant` e `mongo:7`.
+
+**Onde ficam os dados:** em volumes do Docker (`db_data`, `vector_data` e
+`mongo_data`), que sobrevivem a uma reinstalação da mesma stack. Removê-los apaga
+tudo — inclusive os dados dos Aplicativos.
+
+**Instalação com HTTPS:** o `deploy_production.sh` sobe em HTTP na porta 9080. Para
+publicar com certificado, o pacote traz `deploy/scripts/prepare-ssl.sh` e a variante
+`deploy/deploy.sh --ssl`, que usa as portas 80 e 443.
 
 ---
 
@@ -409,6 +571,12 @@ install.sh  ──► baixa .tar.gz ──► extrai ──► deploy_production
 | `permission denied` ao rodar Docker | Usuário não está no grupo docker | Execute `sudo usermod -aG docker $USER` e abra um novo terminal |
 | `This node is already part of a swarm` | Docker Swarm já foi inicializado | Pode ignorar esse erro e continuar |
 | Deploy falha silenciosamente | Problema no `deploy_production.sh` | Verifique os logs com `docker service ls` e `docker stack ps <nome>` |
+| Instalação termina com sucesso, mas a plataforma não abre | Um ou mais serviços não subiram | Rode `docker stack ps pro-ai-production --no-trunc` e leia a coluna ERROR |
+| Serviço parado em `0/1` com erro de porta | Porta já ocupada por outro programa na máquina | Veja [Portas que precisam estar livres](#portas-que-precisam-estar-livres) e libere a porta (ou pare o programa que a usa) |
+| Serviço reiniciando sem parar | Memória insuficiente | Confira os [requisitos da máquina](#requisitos-da-máquina); a stack pede 8 GB de RAM no mínimo |
+| `Required variables missing` no deploy | `.env.production` foi editado e ficou com uma variável vazia | Preencha a variável citada na mensagem e rode `./deploy_production.sh` de novo |
+| Aplicativo publicado abre em branco ou dá erro de conexão | `PRO_AI_APP_PUBLIC_URL` apontando para `localhost` em servidor | Ajuste a variável no `.env.production` conforme o [Passo 3](#passo-3--confira-o-endereço-dos-aplicativos) |
+| Serviço MCP criado na tela não responde | Porta do serviço fora da faixa publicada (8003 a 8006) | Edite o cadastro do MCP e use uma porta dentro da faixa |
 | Docker Desktop não inicia (Windows) | Virtualização desativada na BIOS | Acesse a BIOS do computador e ative a opção de virtualização (VT-x/AMD-V) |
 | WSL não instala (Windows) | Windows desatualizado | Atualize o Windows pelo Windows Update e tente novamente |
 | `brew: command not found` (macOS) | Homebrew não foi instalado ou não está no PATH | Reinstale o Homebrew e siga as instruções exibidas ao final da instalação |
