@@ -14,6 +14,17 @@ O **Pro Agent Hub** é uma plataforma de agentes inteligentes que roda de forma 
 
 > **Para quem não é técnico:** pense neste instalador como um "assistente de instalação" que faz tudo sozinho. Você segue os passos abaixo, cola um único comando no terminal e ele cuida do restante: baixa a versão correta do sistema, descompacta os arquivos e coloca tudo em funcionamento.
 
+### 📖 Já instalou? A documentação de uso fica aqui
+
+**[Manual do Pro Agent Hub](https://bortolottic.github.io/pro-agent-hub-installer/)** — em português, inglês e espanhol:
+
+- **Manual das telas** — o que cada tela faz, que decisões ela pede e onde as pessoas tropeçam.
+- **Referência das funções** — tudo o que dá para chamar nos editores de código (Workflows, Planejadores, MCP Próprio, App Builder), por contexto. Gerada do próprio código.
+
+Este README continua sendo o guia de **instalação**, e o manual não o repete: a página de instalação do site aponta para cá.
+
+> A mesma documentação é servida pela sua instalação, em `/docs/` — útil quando a máquina não tem internet.
+
 ---
 
 ## Antes de instalar
